@@ -1,6 +1,6 @@
 /** @license
 
-dhtmlxScheduler v.7.2.9 Standard
+dhtmlxScheduler v.7.2.10 Standard
 
 To use dhtmlxScheduler in non-GPL projects (and get Pro version of the product), please obtain Commercial/Enterprise or Ultimate license on our site https://dhtmlx.com/docs/products/dhtmlxScheduler/#licensing or contact us at sales@dhtmlx.com
 
@@ -4091,6 +4091,25 @@ function getActiveElement() {
   }
   return activeElement;
 }
+function closest(element, selector) {
+  if (element.closest) {
+    return element.closest(selector);
+  } else if (element.matches || element.msMatchesSelector || element.webkitMatchesSelector) {
+    var el = element;
+    if (!document.documentElement.contains(el))
+      return null;
+    do {
+      var method = el.matches || el.msMatchesSelector || el.webkitMatchesSelector;
+      if (method.call(el, selector))
+        return el;
+      el = el.parentElement || el.parentNode;
+    } while (el !== null && el.nodeType === 1);
+    return null;
+  } else {
+    console.error("Your browser is not supported");
+    return null;
+  }
+}
 function getRootNode(element) {
   if (!element) {
     return document.body;
@@ -4109,9 +4128,13 @@ function hasShadowParent(element) {
   return !!getRootNode(element);
 }
 const dom_helpers = { getAbsoluteLeft: function getAbsoluteLeft(htmlObject) {
-  return this.getOffset(htmlObject).left;
+  const offsetLeft = this.getOffset(htmlObject).left;
+  const paddingLeft = parseInt(window.getComputedStyle(htmlObject).paddingLeft, 10) || 0;
+  return offsetLeft + paddingLeft;
 }, getAbsoluteTop: function getAbsoluteTop(htmlObject) {
-  return this.getOffset(htmlObject).top;
+  const offsetTop = this.getOffset(htmlObject).top;
+  const paddingTop = parseInt(window.getComputedStyle(htmlObject).paddingTop, 10) || 0;
+  return offsetTop + paddingTop;
 }, getOffsetSum: function getOffsetSum(elem) {
   var top = 0, left = 0;
   while (elem) {
@@ -4169,25 +4192,7 @@ const dom_helpers = { getAbsoluteLeft: function getAbsoluteLeft(htmlObject) {
   }
 }, isChildOf: function(child, parent) {
   return parent.contains(child);
-}, getFocusableNodes, getClassName, locateCss, getRootNode, hasShadowParent, isShadowDomSupported, getActiveElement, getRelativeEventPosition, getTargetNode, getNodePosition };
-var closest;
-if (Element.prototype.closest) {
-  closest = function(element, selector) {
-    return element.closest(selector);
-  };
-} else {
-  var matches = Element.prototype.matches || Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
-  closest = function(element, selector) {
-    var el = element;
-    do {
-      if (matches.call(el, selector)) {
-        return el;
-      }
-      el = el.parentElement || el.parentNode;
-    } while (el !== null && el.nodeType === 1);
-    return null;
-  };
-}
+}, getFocusableNodes, getClassName, locateCss, getRootNode, hasShadowParent, isShadowDomSupported, getActiveElement, getRelativeEventPosition, getTargetNode, getNodePosition, closest };
 var isWindowAwailable = typeof window !== "undefined";
 const env = { isIE: isWindowAwailable && (navigator.userAgent.indexOf("MSIE") >= 0 || navigator.userAgent.indexOf("Trident") >= 0), isOpera: isWindowAwailable && navigator.userAgent.indexOf("Opera") >= 0, isChrome: isWindowAwailable && navigator.userAgent.indexOf("Chrome") >= 0, isKHTML: isWindowAwailable && (navigator.userAgent.indexOf("Safari") >= 0 || navigator.userAgent.indexOf("Konqueror") >= 0), isFF: isWindowAwailable && navigator.userAgent.indexOf("Firefox") >= 0, isIPad: isWindowAwailable && navigator.userAgent.search(/iPad/gi) >= 0, isEdge: isWindowAwailable && navigator.userAgent.indexOf("Edge") != -1, isNode: !isWindowAwailable || typeof navigator == "undefined" };
 function extend$g(scheduler2) {
@@ -4240,7 +4245,7 @@ function serialize$1(data) {
   return result;
 }
 function extend$f(scheduler2) {
-  scheduler2.Promise = window.Promise;
+  scheduler2.Promise = typeof window !== "undefined" ? window.Promise : Promise;
   function createConfig(method, args) {
     var result = { method };
     if (args.length === 0) {
@@ -7534,8 +7539,10 @@ function extend$3(scheduler2) {
       scheduler2.setCurrentView();
     }
   }
-  scheduler2.event(window, "DOMContentLoaded", refreshAfterLoad);
-  scheduler2.event(window, "load", refreshAfterLoad);
+  if (typeof window !== "undefined") {
+    scheduler2.event(window, "DOMContentLoaded", refreshAfterLoad);
+    scheduler2.event(window, "load", refreshAfterLoad);
+  }
   scheduler2._border_box_events = function() {
     return checkIfBorderBoxStyling();
   };
@@ -8634,7 +8641,9 @@ function message(scheduler2) {
       return;
     }
   }
-  scheduler2.event(document, "keydown", modal_key, true);
+  if (typeof window !== "undefined") {
+    scheduler2.event(document, "keydown", modal_key, true);
+  }
   function modality(mode) {
     if (!modality.cover) {
       modality.cover = document.createElement("div");
@@ -9099,7 +9108,11 @@ class DatePicker {
     const monthEnd = scheduler2.date.add(scheduler2.date.month_start(new Date(date)), 1, "month");
     let lastDate = scheduler2.date.add(scheduler2.date.month_start(new Date(date)), 1, "month");
     const currentCalDate = scheduler2.date.date_part(scheduler2._currentDate());
-    if (lastDate.getDay() !== 0) {
+    if (lastDate.getDay() !== 0 && scheduler2.config.start_on_monday) {
+      const dayOfWeek = lastDate.getDay();
+      const daysToSunday = (7 - dayOfWeek) % 7;
+      lastDate = scheduler2.date.add(lastDate, daysToSunday + 1, "day");
+    } else {
       lastDate = scheduler2.date.add(scheduler2.date.week_start(lastDate), 1, "week");
     }
     let weeks = this._weeksBetween(firstDate, lastDate);
@@ -9224,7 +9237,7 @@ class DatePicker {
   }
 }
 function factoryMethod(extensionManager) {
-  const scheduler2 = { version: "7.2.9" };
+  const scheduler2 = { version: "7.2.10" };
   scheduler2.$stateProvider = StateService();
   scheduler2.getState = scheduler2.$stateProvider.getState;
   extend$n(scheduler2);
@@ -10181,6 +10194,9 @@ function container_autoresize(scheduler2) {
   var conditionalUpdateContainerHeight = function() {
     if (!(scheduler2.config.container_autoresize && active))
       return true;
+    if (scheduler2._drag_mode && scheduler2._drag_mode === "create" && scheduler2._mobile) {
+      return true;
+    }
     var mode = scheduler2.getState().mode;
     if (!mode) {
       return true;

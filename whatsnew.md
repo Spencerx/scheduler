@@ -1,3 +1,10 @@
+### 7.2.10
+
+Fix the issue where events jumped to the left when being dragged from the last column in the multiday Units view
+Fix the issue where some date cells were missing in specific months in the Month view
+Fix the drag-create issue on mobile devices when using the container_autoresize plugin
+Fix the issue that prevented event creation on double-click after horizontal scrolling in the Units view
+
 ### 7.2.9
 
 Fix memory leaks that occurred in the Timeline view
